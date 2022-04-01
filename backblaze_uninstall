@@ -1,0 +1,54 @@
+#!/bin/zsh
+#Script to silently uninstall backblaze using inbuilt executables.
+#Author: Anuj Chokshi
+
+# Determine logged in user
+user=$(/usr/sbin/scutil <<< "show State:/Users/ConsoleUser" | /usr/bin/awk '/Name :/ && ! /loginwindow/ { print $3 }')
+
+# LaunchAgent Path
+launch_agent_name="com.backblaze.bzbmenu"
+launch_agent_plist="/Library/LaunchAgents/com.backblaze.bzbmenu.plist"
+
+#Check if the Backblaze preference folder exists. If not, terminate the operation.
+if [ -d "/Library/Backblaze.bzpkg" ] ; then 
+	echo "Directory /Library/Backblaze.bzpkg/ exists.Continuing with uninstallation."
+else 
+	echo "Backblaze Preference file not found."
+	exit 1 
+fi
+
+#Pause all on-going backups.
+/Library/Backblaze.bzpkg/bztransmit -pausebackup
+
+#Check and unload bzbmenu launchagent for all users and delete it. 
+for name in $(/usr/bin/dscl /Local/Default list /Users UniqueID | /usr/bin/awk '$2 > 500 {print $1}'); do
+	# Determine home directory of user
+	home_dir="$(/usr/bin/dscl /Local/Default read /Users/"$name" NFSHomeDirectory | /usr/bin/awk '{print $2}')"
+	 uid="$(/usr/bin/id -u "$user")"
+	# Unload LaunchAgent if running
+	if [[ $(/bin/launchctl print user/"$uid" | /usr/bin/grep "$launch_agent_name") ]]; then
+		/bin/launchctl bootout gui/"$uid" "$launch_agent_plist"
+	fi
+	/usr/bin/sudo -u "$name" /bin/rm -rf  "$3"/"$home_dir"/Library/LaunchAgents/com.backblaze.bzbmenu.plist
+done
+
+#Execute inbuilt executable file to shutdown bzserve process.
+/Library/Backblaze.bzpkg/UninstallBackblaze.app/Contents/MacOS/shutdown_bzserve
+
+#Execute inbuilt executable file to delete additional files for backblaze.
+/Library/Backblaze.bzpkg/UninstallBackblaze.app/Contents/MacOS/delete_file 
+
+#Execute inbuilt executable file to shutdown bzbmenu process.
+/Library/Backblaze.bzpkg/UninstallBackblaze.app/Contents/MacOS/shutdown_bzbmenu 
+
+#kill system preferences
+/usr/bin/pkill System\ Preferences
+
+#Remove Backblaze Systems Preference pane.
+/bin/rm -rf /Library/PreferencePanes/BackblazeBackup.prefPane
+
+#Remove Backblaze Preference directory from Systems Library.
+/bin/rm -rf /Library/Backblaze.bzpkg
+
+#Remove Backblaze Application.
+/bin/rm -rf /Applications/Backblaze.app
