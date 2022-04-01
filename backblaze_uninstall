@@ -1,5 +1,6 @@
 #!/bin/zsh
 #Script to silently uninstall backblaze using inbuilt executables.
+#You will need to have Backblaze Application installed on your machine in order for this script to work. 
 #Author: Anuj Chokshi
 
 # Determine logged in user
@@ -27,9 +28,9 @@ for name in $(/usr/bin/dscl /Local/Default list /Users UniqueID | /usr/bin/awk '
 	 uid="$(/usr/bin/id -u "$user")"
 	# Unload LaunchAgent if running
 	if [[ $(/bin/launchctl print user/"$uid" | /usr/bin/grep "$launch_agent_name") ]]; then
-		/bin/launchctl bootout gui/"$uid" "$launch_agent_plist"
+		/bin/launchctl bootout gui/"$uid" "$launch_agent_plist" >/dev/null 2>&1
 	fi
-	/usr/bin/sudo -u "$name" /bin/rm -rf  "$3"/"$home_dir"/Library/LaunchAgents/com.backblaze.bzbmenu.plist
+	/usr/bin/sudo -u "$name" /bin/rm -f  "$3"/"$home_dir"/Library/LaunchAgents/com.backblaze.bzbmenu.plist
 done
 
 #Execute inbuilt executable file to shutdown bzserve process.
@@ -42,7 +43,7 @@ done
 /Library/Backblaze.bzpkg/UninstallBackblaze.app/Contents/MacOS/shutdown_bzbmenu 
 
 #kill system preferences
-/usr/bin/pkill System\ Preferences
+killall -KILL System\ Preferences >/dev/null 2>&1
 
 #Remove Backblaze Systems Preference pane.
 /bin/rm -rf /Library/PreferencePanes/BackblazeBackup.prefPane
@@ -52,3 +53,4 @@ done
 
 #Remove Backblaze Application.
 /bin/rm -rf /Applications/Backblaze.app
+
